@@ -75,70 +75,23 @@ class StudentProfileSerializer(serializers.ModelSerializer):
     external_evaluation = serializers.SerializerMethodField(read_only=True)
 
     def get_group_id(self, obj):
-        # Check supervisor group via GroupMember
-        membership = GroupMember.objects.filter(student=obj).first()
-        if membership:
-            sg = SupervisorOfStudentGroup.objects.filter(group=membership.group, status="accepted").first()
-            if sg:
-                return sg.id
-        group = SupervisorOfStudentGroup.objects.filter(
-            Q(group__student_1=obj) | Q(group__student_2=obj),
-            status="accepted",
-        ).first()
-        return group.id if group else None
+        proj = getattr(obj, "graduation_project", None)
+        return proj.id if proj else None
 
     def get_groupmate_id(self, obj):
-        # Check if student is in any active group via GroupMember
-        membership = GroupMember.objects.filter(student=obj).first()
-        if membership:
-            return membership.group.id
-        group = Group.objects.filter(
-            Q(student_1=obj) | Q(student_2=obj),
-            status="accepted",
-        ).first()
-        return group.id if group else None
+        return None
 
     def get_has_group(self, obj):
-        return bool(self.get_groupmate_id(obj))
+        return bool(getattr(obj, "graduation_project", None))
 
     def get_my_group_name(self, obj):
-        membership = GroupMember.objects.filter(student=obj).select_related("group").first()
-        if membership:
-            return membership.group.group_name or f"Nhóm #{membership.group.id}"
-        group = Group.objects.filter(
-            Q(student_1=obj) | Q(student_2=obj),
-            status="accepted",
-        ).first()
-        if group:
-            return group.group_name or f"Nhóm #{group.id}"
+        proj = getattr(obj, "graduation_project", None)
+        if proj:
+            return proj.topic_title_vi or f"Đồ án tốt nghiệp: {obj.registration_no}"
         return None
 
     def get_external_evaluation(self, obj):
-        """Get external evaluation status if exists."""
-        supervisor_group = SupervisorOfStudentGroup.objects.filter(
-            Q(group__student_1=obj) | Q(group__student_2=obj),
-            status='accepted'
-        ).first()
-        
-        if not supervisor_group:
-            return None
-        
-        try:
-            assignment = supervisor_group.external_assignment
-            if hasattr(assignment, 'evaluation') and assignment.evaluation:
-                return {
-                    'status': 'evaluated',
-                    'grade': assignment.evaluation.grade,
-                    'total_marks': assignment.evaluation.total_marks,
-                    'is_pass': assignment.evaluation.is_pass
-                }
-            return {
-                'status': 'assigned',
-                'external_group': assignment.external_group.name,
-                'external_examiner': assignment.external_group.external_examiner.user.get_full_name()
-            }
-        except Exception:
-            return {'status': 'not_assigned'}
+        return None
 
     class Meta:
         model = Student

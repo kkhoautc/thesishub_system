@@ -28,13 +28,13 @@ class IsSupervisor(BasePermission):
 
 
 class IsCommitteeMember(BasePermission):
-    """Allows access only to committee members."""
+    """Allows access to committee members, supervisors, and admins."""
     message = "You must be a committee member to access this resource."
 
     def has_permission(self, request, view):
-        if not request.user.is_authenticated:
+        if not request.user or not request.user.is_authenticated:
             return False
-        return getattr(request.user, 'user_type', None) == 'committee_member'
+        return getattr(request.user, 'user_type', None) in ['committee_member', 'supervisor', 'admin']
 
 
 class IsExternalExaminer(BasePermission):
