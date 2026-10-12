@@ -17,6 +17,7 @@ from .models import (
     Supervisor,
     SupervisorQuota,
     ProjectTopicArea,
+    StudentPreference,
     InternshipInfo,
     GraduationProject,
     OutlineReviewGroup,
@@ -810,12 +811,20 @@ class StudentSurveyAPIView(APIView):
                     "is_interning": is_interning,
                     "company_name": company_name if is_interning else "",
                     "topic_direction": topic_direction,
-                    "preferred_supervisor": sup1,
+                    "tentative_title": tentative_title
+                }
+            )
+
+            # Update or create StudentPreference
+            StudentPreference.objects.update_or_create(
+                student=student,
+                defaults={
+                    "batch": batch,
+                    "topic_direction": topic_direction,
                     "preference_1": sup1,
                     "preference_2": sup2,
                     "preference_3": sup3,
-                    "secondary_criteria_note": secondary_criteria_note,
-                    "tentative_title": tentative_title
+                    "sub_criteria": secondary_criteria_note
                 }
             )
 

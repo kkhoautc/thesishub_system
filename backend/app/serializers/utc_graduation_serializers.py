@@ -56,10 +56,15 @@ class SupervisorBriefSerializer(serializers.ModelSerializer):
 
 class InternshipInfoSerializer(serializers.ModelSerializer):
     topic_direction_name = serializers.CharField(source="topic_direction.name", read_only=True, default="")
+    preferred_supervisor = serializers.SerializerMethodField()
     preferred_supervisor_name = serializers.SerializerMethodField()
+    preference_1 = serializers.SerializerMethodField()
     preference_1_name = serializers.SerializerMethodField()
+    preference_2 = serializers.SerializerMethodField()
     preference_2_name = serializers.SerializerMethodField()
+    preference_3 = serializers.SerializerMethodField()
     preference_3_name = serializers.SerializerMethodField()
+    secondary_criteria_note = serializers.SerializerMethodField()
 
     class Meta:
         model = InternshipInfo
@@ -85,23 +90,51 @@ class InternshipInfoSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["student", "submitted_at"]
 
+    def _get_pref(self, obj):
+        student = getattr(obj, "student", None)
+        return getattr(student, "preference_record", None) if student else None
+
     def _format_sup_name(self, sup):
         if not sup:
             return ""
         prefix = f"{sup.academic_title} " if sup.academic_title else ""
-        return f"{prefix}{sup.user.get_full_name()}".strip()
+        return f"{prefix}{sup.user.get_full_name() or sup.user.username}".strip()
+
+    def get_preferred_supervisor(self, obj):
+        pref = self._get_pref(obj)
+        return pref.preference_1_id if (pref and pref.preference_1) else None
 
     def get_preferred_supervisor_name(self, obj):
-        return self._format_sup_name(obj.preferred_supervisor)
+        pref = self._get_pref(obj)
+        return self._format_sup_name(pref.preference_1) if pref else ""
+
+    def get_preference_1(self, obj):
+        pref = self._get_pref(obj)
+        return pref.preference_1_id if (pref and pref.preference_1) else None
 
     def get_preference_1_name(self, obj):
-        return self._format_sup_name(obj.preference_1 or obj.preferred_supervisor)
+        pref = self._get_pref(obj)
+        return self._format_sup_name(pref.preference_1) if pref else ""
+
+    def get_preference_2(self, obj):
+        pref = self._get_pref(obj)
+        return pref.preference_2_id if (pref and pref.preference_2) else None
 
     def get_preference_2_name(self, obj):
-        return self._format_sup_name(obj.preference_2)
+        pref = self._get_pref(obj)
+        return self._format_sup_name(pref.preference_2) if pref else ""
+
+    def get_preference_3(self, obj):
+        pref = self._get_pref(obj)
+        return pref.preference_3_id if (pref and pref.preference_3) else None
 
     def get_preference_3_name(self, obj):
-        return self._format_sup_name(obj.preference_3)
+        pref = self._get_pref(obj)
+        return self._format_sup_name(pref.preference_3) if pref else ""
+
+    def get_secondary_criteria_note(self, obj):
+        pref = self._get_pref(obj)
+        return pref.sub_criteria if pref else ""
 
     def validate(self, attrs):
         is_interning = attrs.get("is_interning", False)
