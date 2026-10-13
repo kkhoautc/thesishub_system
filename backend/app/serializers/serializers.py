@@ -73,13 +73,17 @@ class StudentProfileSerializer(serializers.ModelSerializer):
     has_group = serializers.SerializerMethodField(read_only=True)
     my_group_name = serializers.SerializerMethodField(read_only=True)
     external_evaluation = serializers.SerializerMethodField(read_only=True)
+    academic_batch = serializers.SerializerMethodField(read_only=True)
+    graduation_project = serializers.SerializerMethodField(read_only=True)
+    timeline_step = serializers.SerializerMethodField(read_only=True)
 
     def get_group_id(self, obj):
         proj = getattr(obj, "graduation_project", None)
         return proj.id if proj else None
 
     def get_groupmate_id(self, obj):
-        return None
+        proj = getattr(obj, "graduation_project", None)
+        return proj.id if proj else None
 
     def get_has_group(self, obj):
         return bool(getattr(obj, "graduation_project", None))
@@ -92,6 +96,62 @@ class StudentProfileSerializer(serializers.ModelSerializer):
 
     def get_external_evaluation(self, obj):
         return None
+
+    def get_academic_batch(self, obj):
+        batch = getattr(obj, "academic_batch", None)
+        if not batch:
+            from ..models import AcademicBatch
+            batch = AcademicBatch.objects.filter(is_active=True).first()
+        if batch:
+            return {
+                "id": batch.id,
+                "batch_code": batch.batch_code,
+                "batch_name": batch.batch_name,
+                "current_stage": getattr(batch, "current_stage", "PHASE_1_SETUP"),
+                "is_active": batch.is_active,
+            }
+        return None
+
+    def get_graduation_project(self, obj):
+        proj = getattr(obj, "graduation_project", None)
+        if proj:
+            sup = getattr(proj, "supervisor", None)
+            sup_name = (sup.user.get_full_name() or sup.user.username) if (sup and sup.user) else None
+            sup_email = sup.user.email if (sup and sup.user) else None
+            return {
+                "id": proj.id,
+                "topic_title_vi": proj.topic_title_vi,
+                "topic_title_en": proj.topic_title_en,
+                "status": proj.status,
+                "status_display": proj.get_status_display() if hasattr(proj, "get_status_display") else proj.status,
+                "topic_review_status": proj.topic_review_status,
+                "topic_review_status_display": proj.get_topic_review_status_display() if hasattr(proj, "get_topic_review_status_display") else proj.topic_review_status,
+                "topic_revision_notes": proj.topic_revision_notes,
+                "initial_eligibility": proj.initial_eligibility,
+                "initial_eligibility_display": proj.get_initial_eligibility_display() if hasattr(proj, "get_initial_eligibility_display") else proj.initial_eligibility,
+                "ineligibility_reason": proj.ineligibility_reason,
+                "final_academic_eligibility": proj.final_academic_eligibility,
+                "supervisor_name": sup_name,
+                "supervisor_email": sup_email,
+                "is_eligible_for_defense": getattr(proj, "is_eligible_for_defense", False),
+            }
+        return None
+
+    def get_timeline_step(self, obj):
+        proj = getattr(obj, "graduation_project", None)
+        if not proj:
+            return 1
+        status = getattr(proj, "status", "")
+        review_status = getattr(proj, "topic_review_status", "")
+        if status in ["DEFENSE_READY", "DEFENSE_PASSED", "PASSED"]:
+            return 5
+        elif status in ["SUBMITTED", "FINAL_SUBMISSION"]:
+            return 4
+        elif status in ["IN_PROGRESS", "OUTLINE_APPROVED", "MIDTERM_EVALUATED"] or review_status == "APPROVED":
+            return 3
+        elif status in ["ALLOCATED", "TOPIC_CONFIRMED", "OUTLINE_PENDING"] or review_status in ["GV_CONFIRMED", "REVISION_REQUIRED"]:
+            return 2
+        return 1
 
     class Meta:
         model = Student
@@ -107,6 +167,9 @@ class StudentProfileSerializer(serializers.ModelSerializer):
             "has_group",
             "my_group_name",
             "external_evaluation",
+            "academic_batch",
+            "graduation_project",
+            "timeline_step",
         ]
 
 
@@ -1051,10 +1114,6 @@ class NotificationSerializer(serializers.ModelSerializer):
             "message",
             "is_read",
             "created_at",
-            "related_group",
-            "related_supervisor_group",
-            "related_document",
-            "action_url",
         ]
         read_only_fields = [
             "id",
@@ -1062,10 +1121,6 @@ class NotificationSerializer(serializers.ModelSerializer):
             "title",
             "message",
             "created_at",
-            "related_group",
-            "related_supervisor_group",
-            "related_document",
-            "action_url",
         ]
 
 

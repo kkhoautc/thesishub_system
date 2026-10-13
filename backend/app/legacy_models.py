@@ -7,7 +7,7 @@ from .models import CustomUser, Student, Supervisor, AcademicBatch, GraduationPr
 class PasswordResetCode(models.Model):
     """Model to store 6-digit password reset codes sent via email."""
     user = models.ForeignKey(
-        CustomUser, on_delete=models.CASCADE, related_name="password_reset_codes"
+        CustomUser, on_delete=models.DO_NOTHING, related_name="password_reset_codes"
     )
     code = models.CharField(max_length=6)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -83,10 +83,10 @@ class Group(models.Model):
 
     group_name = models.CharField(max_length=255, null=True, blank=True)
     academic_batch = models.ForeignKey(
-        AcademicBatch, on_delete=models.SET_NULL, null=True, blank=True, related_name="academic_groups"
+        AcademicBatch, on_delete=models.DO_NOTHING, null=True, blank=True, related_name="academic_groups"
     )
     leader = models.ForeignKey(
-        Student, on_delete=models.SET_NULL, null=True, blank=True, related_name="led_groups"
+        Student, on_delete=models.DO_NOTHING, null=True, blank=True, related_name="led_groups"
     )
     max_members = models.PositiveSmallIntegerField(default=3)
     is_recruiting = models.BooleanField(default=True)
@@ -98,14 +98,14 @@ class Group(models.Model):
     topic_revision_notes = models.TextField(blank=True, default="")
 
     student_1 = models.ForeignKey(
-        Student, on_delete=models.CASCADE, related_name="send_request", null=True, blank=True
+        Student, on_delete=models.DO_NOTHING, related_name="send_request", null=True, blank=True
     )
     student_2 = models.ForeignKey(
-        Student, on_delete=models.CASCADE, related_name="receive_request", null=True, blank=True
+        Student, on_delete=models.DO_NOTHING, related_name="receive_request", null=True, blank=True
     )
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending", db_index=True)
     project_category = models.ForeignKey(
-        ProjectCategories, on_delete=models.SET_NULL, related_name="groupmate_project", null=True, blank=True
+        ProjectCategories, on_delete=models.DO_NOTHING, related_name="groupmate_project", null=True, blank=True
     )
 
     class Meta:
@@ -136,10 +136,10 @@ class GroupMember(models.Model):
         ("MEMBER", "Thành viên"),
     )
     group = models.ForeignKey(
-        Group, on_delete=models.CASCADE, related_name="members"
+        Group, on_delete=models.DO_NOTHING, related_name="members"
     )
     student = models.ForeignKey(
-        Student, on_delete=models.CASCADE, related_name="group_memberships"
+        Student, on_delete=models.DO_NOTHING, related_name="group_memberships"
     )
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default="MEMBER")
     joined_at = models.DateTimeField(auto_now_add=True)
@@ -158,10 +158,10 @@ class GroupJoinRequest(models.Model):
         ("CANCELED", "Đã hủy"),
     )
     group = models.ForeignKey(
-        Group, on_delete=models.CASCADE, related_name="join_requests"
+        Group, on_delete=models.DO_NOTHING, related_name="join_requests"
     )
     student = models.ForeignKey(
-        Student, on_delete=models.CASCADE, related_name="student_join_requests"
+        Student, on_delete=models.DO_NOTHING, related_name="student_join_requests"
     )
     message = models.TextField(blank=True, default="")
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="PENDING")
@@ -175,9 +175,9 @@ class GroupJoinRequest(models.Model):
 
 
 class GroupCreationComment(models.Model):
-    group = models.ForeignKey(Group, on_delete=models.CASCADE, related_name="comments")
+    group = models.ForeignKey(Group, on_delete=models.DO_NOTHING, related_name="comments")
     student = models.ForeignKey(
-        Student, on_delete=models.CASCADE, related_name="comments"
+        Student, on_delete=models.DO_NOTHING, related_name="comments"
     )
     comment = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
@@ -203,11 +203,11 @@ class CommitteeMemberPanel(models.Model):
 
 class Project(models.Model):
     project_category = models.ForeignKey(
-        ProjectCategories, on_delete=models.CASCADE, related_name="project_category"
+        ProjectCategories, on_delete=models.DO_NOTHING, related_name="project_category"
     )
     panel = models.ForeignKey(
         CommitteeMemberPanel,
-        on_delete=models.SET_NULL,
+        on_delete=models.DO_NOTHING,
         related_name="projects",
         null=True,
         blank=True,
@@ -218,7 +218,7 @@ class Project(models.Model):
     functionalities = models.TextField()
     user = models.ForeignKey(
         CustomUser,
-        on_delete=models.SET_NULL,
+        on_delete=models.DO_NOTHING,
         related_name="projects",
         null=True,
         blank=True,
@@ -835,78 +835,78 @@ class SupervisorOfStudentGroup(models.Model):
         ("canceled", "Canceled"),
     )
     group = models.ForeignKey(
-        Group, on_delete=models.CASCADE, related_name="supervisor_request"
+        Group, on_delete=models.DO_NOTHING, related_name="supervisor_request"
     )
     supervisor = models.ForeignKey(
-        Supervisor, on_delete=models.CASCADE, related_name="group_request"
+        Supervisor, on_delete=models.DO_NOTHING, related_name="group_request"
     )
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
     project = models.ForeignKey(
-        Project, on_delete=models.CASCADE, related_name="groups"
+        Project, on_delete=models.DO_NOTHING, related_name="groups"
     )
     created_at = models.DateTimeField(auto_now_add=True)
     created_by = models.ForeignKey(
-        Student, on_delete=models.CASCADE, related_name="supervisor_request_created_by"
+        Student, on_delete=models.DO_NOTHING, related_name="supervisor_request_created_by"
     )
     Scope_document_evaluation_form = models.OneToOneField(
         ScopeDocumentEvaluationCriteria,
-        on_delete=models.CASCADE,
+        on_delete=models.DO_NOTHING,
         related_name="scope_document_evaluation_form",
         blank=True,
         null=True,
     )
     srs_evaluation_supervisor = models.OneToOneField(
         SRSEvaluationSupervisor,
-        on_delete=models.CASCADE,
+        on_delete=models.DO_NOTHING,
         related_name="supervisor_of_students",
         blank=True,
         null=True,
     )
     srs_evaluation_committee_member = models.OneToOneField(
         SRSEvaluationCommitteeMember,
-        on_delete=models.CASCADE,
+        on_delete=models.DO_NOTHING,
         related_name="supervisor_of_students",
         blank=True,
         null=True,
     )
     sdd_evaluation_supervisor = models.OneToOneField(
         SDDEvaluationSupervisor,
-        on_delete=models.CASCADE,
+        on_delete=models.DO_NOTHING,
         related_name="supervisor_of_students",
         blank=True,
         null=True,
     )
     sdd_evaluation_committee_member = models.OneToOneField(
         SDDEvaluationCommitteeMember,
-        on_delete=models.CASCADE,
+        on_delete=models.DO_NOTHING,
         related_name="supervisor_of_students",
         blank=True,
         null=True,
     )
     evaluation3_supervisor = models.OneToOneField(
         Evaluation3Supervisor,
-        on_delete=models.CASCADE,
+        on_delete=models.DO_NOTHING,
         related_name="supervisor_of_students",
         blank=True,
         null=True,
     )
     evaluation3_committee_member = models.OneToOneField(
         Evaluation3CommitteeMember,
-        on_delete=models.CASCADE,
+        on_delete=models.DO_NOTHING,
         related_name="supervisor_of_students",
         blank=True,
         null=True,
     )
     evaluation4_supervisor = models.OneToOneField(
         Evaluation4Supervisor,
-        on_delete=models.CASCADE,
+        on_delete=models.DO_NOTHING,
         related_name="supervisor_of_students",
         blank=True,
         null=True,
     )
     evaluation4_committee_member = models.OneToOneField(
         Evaluation4CommitteeMember,
-        on_delete=models.CASCADE,
+        on_delete=models.DO_NOTHING,
         related_name="supervisor_of_students",
         blank=True,
         null=True,
@@ -1019,20 +1019,20 @@ class SupervisorStudentComments(models.Model):
     )
     student = models.ForeignKey(
         Student,
-        on_delete=models.SET_NULL,
+        on_delete=models.DO_NOTHING,
         null=True,
         blank=True,
         related_name="student_comments",
     )
     supervisor = models.ForeignKey(
         Supervisor,
-        on_delete=models.SET_NULL,
+        on_delete=models.DO_NOTHING,
         null=True,
         blank=True,
         related_name="supervisor_comments",
     )
     group = models.ForeignKey(
-        Group, on_delete=models.CASCADE, related_name="group_comments"
+        Group, on_delete=models.DO_NOTHING, related_name="group_comments"
     )
     comment = models.TextField()
     commented_by = models.CharField(
@@ -1050,11 +1050,11 @@ class SupervisorStudentComments(models.Model):
 
 class CommitteeMember(models.Model):
     user = models.OneToOneField(
-        CustomUser, on_delete=models.CASCADE, related_name="committee_member_profile"
+        CustomUser, on_delete=models.DO_NOTHING, related_name="committee_member_profile"
     )
     committee_id = models.CharField(max_length=100, unique=True)
     panel = models.ForeignKey(
-        CommitteeMemberPanel, on_delete=models.CASCADE, related_name="committee_member"
+        CommitteeMemberPanel, on_delete=models.DO_NOTHING, related_name="committee_member"
     )
 
 
@@ -1080,7 +1080,7 @@ class ExternalExaminer(models.Model):
     
     user = models.OneToOneField(
         CustomUser,
-        on_delete=models.CASCADE,
+        on_delete=models.DO_NOTHING,
         related_name="external_examiner_profile"
     )
     external_id = models.CharField(max_length=50, unique=True)
@@ -1126,7 +1126,7 @@ class ExternalGroup(models.Model):
     name = models.CharField(max_length=100)
     external_examiner = models.ForeignKey(
         ExternalExaminer,
-        on_delete=models.CASCADE,
+        on_delete=models.DO_NOTHING,
         related_name="external_groups"
     )
     semester = models.CharField(max_length=50)
@@ -1142,7 +1142,7 @@ class ExternalGroup(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     created_by = models.ForeignKey(
         CustomUser,
-        on_delete=models.SET_NULL,
+        on_delete=models.DO_NOTHING,
         null=True,
         related_name="created_external_groups"
     )
@@ -1185,12 +1185,12 @@ class ExternalGroupAssignment(models.Model):
     
     external_group = models.ForeignKey(
         ExternalGroup,
-        on_delete=models.CASCADE,
+        on_delete=models.DO_NOTHING,
         related_name="assignments"
     )
     supervisor_group = models.OneToOneField(
         'SupervisorOfStudentGroup',
-        on_delete=models.CASCADE,
+        on_delete=models.DO_NOTHING,
         related_name="external_assignment"
     )
     slot_number = models.PositiveIntegerField(blank=True, null=True)
@@ -1203,7 +1203,7 @@ class ExternalGroupAssignment(models.Model):
     assigned_at = models.DateTimeField(auto_now_add=True)
     assigned_by = models.ForeignKey(
         CustomUser,
-        on_delete=models.SET_NULL,
+        on_delete=models.DO_NOTHING,
         null=True,
         related_name="external_assignments_created"
     )
@@ -1240,7 +1240,7 @@ class ExternalEvaluation(models.Model):
     
     assignment = models.OneToOneField(
         ExternalGroupAssignment,
-        on_delete=models.CASCADE,
+        on_delete=models.DO_NOTHING,
         related_name="evaluation"
     )
     
@@ -1457,7 +1457,7 @@ class EvaluationSchedule(models.Model):
     # For external evaluations
     external_group = models.ForeignKey(
         ExternalGroup,
-        on_delete=models.CASCADE,
+        on_delete=models.DO_NOTHING,
         null=True,
         blank=True,
         related_name="schedules"
@@ -1466,7 +1466,7 @@ class EvaluationSchedule(models.Model):
     # For internal evaluations
     panel = models.ForeignKey(
         'CommitteeMemberPanel',
-        on_delete=models.CASCADE,
+        on_delete=models.DO_NOTHING,
         null=True,
         blank=True,
         related_name="schedules"
@@ -1476,7 +1476,7 @@ class EvaluationSchedule(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     created_by = models.ForeignKey(
         CustomUser,
-        on_delete=models.SET_NULL,
+        on_delete=models.DO_NOTHING,
         null=True,
         related_name="created_schedules"
     )
@@ -1503,10 +1503,10 @@ class Document(models.Model):
         ("canceled", "Canceled"),
     )
     group = models.ForeignKey(
-        SupervisorOfStudentGroup, on_delete=models.CASCADE, related_name="documents"
+        SupervisorOfStudentGroup, on_delete=models.DO_NOTHING, related_name="documents"
     )
     uploaded_by = models.ForeignKey(
-        Student, on_delete=models.CASCADE, related_name="uploaded_documents"
+        Student, on_delete=models.DO_NOTHING, related_name="uploaded_documents"
     )
     document_type = models.CharField(max_length=50, choices=DOCUMENT_TYPE_CHOICES)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
@@ -1532,10 +1532,10 @@ class Document(models.Model):
 
 class DocumentComment(models.Model):
     document = models.ForeignKey(
-        Document, on_delete=models.CASCADE, related_name="comments"
+        Document, on_delete=models.DO_NOTHING, related_name="comments"
     )
     author = models.ForeignKey(
-        CustomUser, on_delete=models.CASCADE, related_name="document_comments"
+        CustomUser, on_delete=models.DO_NOTHING, related_name="document_comments"
     )
     section = models.CharField(
         max_length=100, default="general", help_text="Mục nhận xét (general, format, content, requirements,...)"
@@ -1565,7 +1565,7 @@ class CommitteeMemberTemplates(models.Model):
     template_type = models.CharField(max_length=50, choices=TEMPLATE_TYPE_CHOICES)
     uploaded_by = models.ForeignKey(
         CommitteeMember,
-        on_delete=models.CASCADE,
+        on_delete=models.DO_NOTHING,
         related_name="uploaded_templates",
         blank=True,
         null=True,
@@ -1612,7 +1612,7 @@ class DocumentRequirement(models.Model):
     )
     created_by = models.ForeignKey(
         CommitteeMember,
-        on_delete=models.SET_NULL,
+        on_delete=models.DO_NOTHING,
         related_name="document_requirements",
         null=True,
         blank=True,
@@ -1632,18 +1632,18 @@ class ChatRoom(models.Model):
         ("supervisor", "Supervisor"),
     )
     group = models.ForeignKey(
-        SupervisorOfStudentGroup, on_delete=models.CASCADE, related_name="chat_messages"
+        SupervisorOfStudentGroup, on_delete=models.DO_NOTHING, related_name="chat_messages"
     )
     student = models.ForeignKey(
         Student,
-        on_delete=models.SET_NULL,
+        on_delete=models.DO_NOTHING,
         null=True,
         blank=True,
         related_name="student_messages",
     )
     supervisor = models.ForeignKey(
         Supervisor,
-        on_delete=models.SET_NULL,
+        on_delete=models.DO_NOTHING,
         null=True,
         blank=True,
         related_name="supervisor_messages",
@@ -1669,7 +1669,7 @@ class NotificationPreference(models.Model):
     
     user = models.OneToOneField(
         CustomUser,
-        on_delete=models.CASCADE,
+        on_delete=models.DO_NOTHING,
         related_name="notification_preferences"
     )
     
@@ -1699,13 +1699,13 @@ class NotificationPreference(models.Model):
 class ProposedAllocation(models.Model):
     """Bảng đề xuất phân công hướng dẫn đồ án (hệ thống tính toán trước khi Khoa duyệt/override)"""
     batch = models.ForeignKey(
-        AcademicBatch, on_delete=models.CASCADE, related_name="proposed_allocations"
+        AcademicBatch, on_delete=models.DO_NOTHING, related_name="proposed_allocations"
     )
     student = models.ForeignKey(
-        Student, on_delete=models.CASCADE, related_name="proposed_assignments"
+        Student, on_delete=models.DO_NOTHING, related_name="proposed_assignments"
     )
     supervisor = models.ForeignKey(
-        Supervisor, on_delete=models.CASCADE, related_name="proposed_students"
+        Supervisor, on_delete=models.DO_NOTHING, related_name="proposed_students"
     )
     matched_preference = models.IntegerField(default=1, help_text="Khớp NV1 (1), NV2 (2), NV3 (3) hoặc Hệ thống gán (0)")
     match_score = models.FloatField(default=0.0)
@@ -1728,7 +1728,7 @@ class SystemBugReport(models.Model):
         ("CLOSED", "Đã đóng"),
     )
     user = models.ForeignKey(
-        CustomUser, on_delete=models.SET_NULL, null=True, blank=True, related_name="bug_reports"
+        CustomUser, on_delete=models.DO_NOTHING, null=True, blank=True, related_name="bug_reports"
     )
     title = models.CharField(max_length=255, blank=True, default="Báo lỗi hệ thống")
     description = models.TextField(help_text="Mô tả chi tiết lỗi gặp phải")

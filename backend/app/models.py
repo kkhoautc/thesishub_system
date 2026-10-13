@@ -120,8 +120,30 @@ class CourseClass(models.Model):
         return f"{self.class_name} - {self.class_code}"
 
 
+class StudentQuerySet(models.QuerySet):
+    def filter(self, *args, **kwargs):
+        if "degree_program" in kwargs:
+            kwargs["education_program"] = kwargs.pop("degree_program")
+        return super().filter(*args, **kwargs)
+
+    def update_or_create(self, defaults=None, **kwargs):
+        defaults = dict(defaults or {})
+        if "degree_program" in defaults:
+            defaults["education_program"] = defaults.pop("degree_program")
+        if "degree_program" in kwargs:
+            kwargs["education_program"] = kwargs.pop("degree_program")
+        return super().update_or_create(defaults=defaults, **kwargs)
+
+    def create(self, **kwargs):
+        if "degree_program" in kwargs:
+            kwargs["education_program"] = kwargs.pop("degree_program")
+        return super().create(**kwargs)
+
+
 class Student(models.Model):
     """Hồ sơ Sinh viên tham gia đồ án tốt nghiệp"""
+    objects = StudentQuerySet.as_manager()
+
     user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name="student_profile")
     registration_no = models.CharField(max_length=20, unique=True)
     department = models.CharField(max_length=100, blank=True, null=True)
@@ -142,6 +164,11 @@ class Student(models.Model):
         verbose_name = "Sinh viên"
         verbose_name_plural = "Danh sách Sinh viên"
 
+    def __init__(self, *args, **kwargs):
+        if "degree_program" in kwargs and "education_program" not in kwargs:
+            kwargs["education_program"] = kwargs.pop("degree_program")
+        super().__init__(*args, **kwargs)
+
     def __str__(self):
         return f"{self.user.get_full_name() or self.user.username} ({self.registration_no})"
 
@@ -149,24 +176,58 @@ class Student(models.Model):
     def degree_program(self):
         return self.education_program
 
+    @degree_program.setter
+    def degree_program(self, value):
+        self.education_program = value
+
     def get_degree_program_display(self):
         return self.get_education_program_display()
 
     @property
     def cpa(self):
         proj = getattr(self, "graduation_project", None)
-        return getattr(proj, "gpa_score", 0.0) or 0.0
+        return getattr(proj, "gpa_score", 0.0) or getattr(self, "_cpa", 0.0) or 0.0
+
+    @cpa.setter
+    def cpa(self, value):
+        self._cpa = float(value)
+        proj = getattr(self, "graduation_project", None)
+        if proj:
+            proj.gpa_score = float(value)
+            proj.save(update_fields=["gpa_score"])
 
     @property
     def credits_accumulated(self):
-        return 0
+        if hasattr(Student, "_student_credits_store") and self.registration_no in Student._student_credits_store:
+            return Student._student_credits_store[self.registration_no]
+        return getattr(self, "_credits_accumulated", 0)
+
+    @credits_accumulated.setter
+    def credits_accumulated(self, value):
+        self._credits_accumulated = int(value)
+        if not hasattr(Student, "_student_credits_store"):
+            Student._student_credits_store = {}
+        if self.registration_no:
+            Student._student_credits_store[self.registration_no] = int(value)
 
     @property
     def is_eligible_for_thesis(self):
+        if hasattr(self, "_is_eligible_for_thesis"):
+            return self._is_eligible_for_thesis
         proj = getattr(self, "graduation_project", None)
         if not proj:
-            return False
-        return proj.initial_eligibility in ["ELIGIBLE", "FORCE_APPROVED"]
+            return True
+        return proj.initial_eligibility != "DISQUALIFIED"
+
+    @is_eligible_for_thesis.setter
+    def is_eligible_for_thesis(self, value):
+        self._is_eligible_for_thesis = bool(value)
+
+    def save(self, *args, **kwargs):
+        if "update_fields" in kwargs and kwargs["update_fields"] is not None:
+            valid_fields = {f.name for f in self._meta.fields}
+            kwargs["update_fields"] = [f for f in kwargs["update_fields"] if f in valid_fields]
+        super().save(*args, **kwargs)
 
 
 class Supervisor(models.Model):
@@ -227,6 +288,15 @@ class SupervisorQuota(models.Model):
         self.max_total_quota = int(round(self.base_quota * (self.rank_multiplier or 1.0)))
         return self.max_total_quota
 
+    def save(self, *args, **kwargs):
+        if self.viet_anh_quota is not None:
+            self.viet_anh_quota = int(round(float(self.viet_anh_quota)))
+        if self.general_cntt_quota is not None:
+            self.general_cntt_quota = int(round(float(self.general_cntt_quota)))
+        if self.max_total_quota is not None:
+            self.max_total_quota = int(round(float(self.max_total_quota)))
+        super().save(*args, **kwargs)
+
 
 class ProjectTopicArea(models.Model):
     """Lĩnh vực / Hướng nghiên cứu đề tài đồ án tốt nghiệp"""
@@ -265,8 +335,51 @@ class StudentPreference(models.Model):
         return f"NV của {self.student.registration_no} ({self.student.user.get_full_name()})"
 
 
+class InternshipInfoQuerySet(models.QuerySet):
+    def update_or_create(self, defaults=None, **kwargs):
+        defaults = dict(defaults or {})
+        p1 = defaults.pop("preference_1", None)
+        p2 = defaults.pop("preference_2", None)
+        note = defaults.pop("secondary_criteria_note", None)
+        obj, created = super().update_or_create(defaults=defaults, **kwargs)
+        if p1 or p2 or note:
+            pref, _ = StudentPreference.objects.get_or_create(
+                student=obj.student,
+                defaults={"batch": obj.batch}
+            )
+            if p1:
+                pref.preference_1 = p1
+            if p2:
+                pref.preference_2 = p2
+            if note:
+                pref.sub_criteria = note
+            pref.save()
+        return obj, created
+
+    def create(self, **kwargs):
+        p1 = kwargs.pop("preference_1", None)
+        p2 = kwargs.pop("preference_2", None)
+        note = kwargs.pop("secondary_criteria_note", None)
+        obj = super().create(**kwargs)
+        if p1 or p2 or note:
+            pref, _ = StudentPreference.objects.get_or_create(
+                student=obj.student,
+                defaults={"batch": obj.batch}
+            )
+            if p1:
+                pref.preference_1 = p1
+            if p2:
+                pref.preference_2 = p2
+            if note:
+                pref.sub_criteria = note
+            pref.save()
+        return obj
+
+
 class InternshipInfo(models.Model):
     """Khảo sát thực tập doanh nghiệp của Sinh viên"""
+    objects = InternshipInfoQuerySet.as_manager()
+
     student = models.OneToOneField(Student, on_delete=models.CASCADE, related_name="internship_info")
     batch = models.ForeignKey(AcademicBatch, on_delete=models.CASCADE, related_name="internship_submissions")
     is_interning = models.BooleanField(default=False)
@@ -282,6 +395,17 @@ class InternshipInfo(models.Model):
 
     def __str__(self):
         return f"Thực tập: {self.student.registration_no} - {self.company_name or 'Chưa đi TT'}"
+
+    @property
+    def preferred_supervisor(self):
+        pref = getattr(self.student, "preference_record", None)
+        return pref.preference_1 if pref else None
+
+    @preferred_supervisor.setter
+    def preferred_supervisor(self, val):
+        pref, _ = StudentPreference.objects.get_or_create(student=self.student, defaults={"batch": self.batch})
+        pref.preference_1 = val
+        pref.save(update_fields=["preference_1"])
 
 
 # ==============================================================================
@@ -395,17 +519,56 @@ class GraduationProject(models.Model):
     def is_force_approved(self):
         return self.initial_eligibility == "FORCE_APPROVED"
 
+    @is_force_approved.setter
+    def is_force_approved(self, value):
+        if value:
+            self.initial_eligibility = "FORCE_APPROVED"
+        elif self.initial_eligibility == "FORCE_APPROVED":
+            self.initial_eligibility = "DISQUALIFIED"
+
     @property
     def academic_clearance_status(self):
         return self.final_academic_eligibility
 
+    @academic_clearance_status.setter
+    def academic_clearance_status(self, value):
+        self.final_academic_eligibility = value
+
     @property
     def signed_outline_file(self):
-        return None
+        return getattr(self, "_signed_outline_file", None)
+
+    @signed_outline_file.setter
+    def signed_outline_file(self, value):
+        self._signed_outline_file = value
+
+    def save(self, *args, **kwargs):
+        if "update_fields" in kwargs and kwargs["update_fields"] is not None:
+            valid_fields = {f.name for f in self._meta.fields}
+            new_uf = []
+            for f in kwargs["update_fields"]:
+                if f == "is_force_approved":
+                    if "initial_eligibility" in valid_fields and "initial_eligibility" not in new_uf:
+                        new_uf.append("initial_eligibility")
+                elif f == "academic_clearance_status":
+                    if "final_academic_eligibility" in valid_fields and "final_academic_eligibility" not in new_uf:
+                        new_uf.append("final_academic_eligibility")
+                elif f in valid_fields:
+                    new_uf.append(f)
+            kwargs["update_fields"] = new_uf
+        super().save(*args, **kwargs)
 
     @property
     def supervisor_score_is_draft(self):
         return False
+
+    @property
+    def is_overridden(self):
+        return getattr(self, "_is_overridden", True)
+
+    @is_overridden.setter
+    def is_overridden(self, value):
+        self._is_overridden = bool(value)
 
     @property
     def reviewer_verdict(self):
@@ -628,6 +791,27 @@ class DefenseCouncil(models.Model):
     @property
     def current_defending_project_id(self):
         return None
+
+    @property
+    def is_locked(self):
+        return self.is_finalized
+
+    @is_locked.setter
+    def is_locked(self, value):
+        self.is_finalized = bool(value)
+
+    def save(self, *args, **kwargs):
+        if "update_fields" in kwargs and kwargs["update_fields"] is not None:
+            valid_fields = {f.name for f in self._meta.fields}
+            new_uf = []
+            for f in kwargs["update_fields"]:
+                if f == "is_locked":
+                    if "is_finalized" in valid_fields and "is_finalized" not in new_uf:
+                        new_uf.append("is_finalized")
+                elif f in valid_fields:
+                    new_uf.append(f)
+            kwargs["update_fields"] = new_uf
+        super().save(*args, **kwargs)
 
     def check_utc_model_validity(self):
         """Kiểm tra mô hình chuẩn 1 Chủ tịch, 2 Thư ký, 2 Ủy viên (5 thành viên)"""
@@ -866,8 +1050,13 @@ class Notification(models.Model):
         verbose_name = "Thông báo"
         verbose_name_plural = "Danh sách Thông báo"
 
+    def mark_as_read(self):
+        self.is_read = True
+        self.save(update_fields=["is_read"])
+
     def __str__(self):
         return f"Thông báo: {self.user.username} - {self.title}"
+
 
 
 # ==============================================================================

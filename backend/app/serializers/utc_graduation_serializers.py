@@ -366,6 +366,9 @@ class GraduationProjectDetailSerializer(serializers.ModelSerializer):
     session_time = serializers.CharField(source="council.get_session_time_display", read_only=True, default="")
     topic_category_name = serializers.CharField(source="topic_category.name", read_only=True, default="")
     status_display = serializers.CharField(source="get_status_display", read_only=True)
+    topic_review_status_display = serializers.CharField(source="get_topic_review_status_display", read_only=True)
+    initial_eligibility_display = serializers.CharField(source="get_initial_eligibility_display", read_only=True)
+    final_academic_eligibility_display = serializers.CharField(source="get_final_academic_eligibility_display", read_only=True)
     reviewer_verdict_display = serializers.CharField(source="get_reviewer_verdict_display", read_only=True)
     defense_status_display = serializers.CharField(source="get_defense_status_display", read_only=True)
     is_currently_defending = serializers.SerializerMethodField()
@@ -401,10 +404,20 @@ class GraduationProjectDetailSerializer(serializers.ModelSerializer):
             "topic_title_en",
             "status",
             "status_display",
+            "topic_review_status",
+            "topic_review_status_display",
+            "topic_revision_notes",
+            "initial_eligibility",
+            "initial_eligibility_display",
+            "ineligibility_reason",
+            "final_academic_eligibility",
+            "final_academic_eligibility_display",
+            "final_academic_notes",
             "defense_status",
             "defense_status_display",
             "is_currently_defending",
             "is_force_approved",
+            "force_approved_at",
             "academic_clearance_status",
             "signed_outline_file",
             "signed_outline_file_url",
@@ -428,7 +441,7 @@ class GraduationProjectDetailSerializer(serializers.ModelSerializer):
 
     def get_signed_outline_file_url(self, obj):
         if obj.signed_outline_file:
-            return obj.signed_outline_file.url
+            return getattr(obj.signed_outline_file, "url", f"/media/outlines/{obj.id}_signed.pdf")
         return ""
 
     def get_is_currently_defending(self, obj):

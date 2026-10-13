@@ -506,6 +506,10 @@ class StudentProfileView(RetrieveAPIView):
     queryset = Student.objects.all()
 
     def get_object(self):
+        try:
+            NotificationService.sync_student_graduation_notifications(self.request.user)
+        except Exception:
+            pass
         return get_object_or_404(self.get_queryset(), user=self.request.user)
 
 
@@ -2758,6 +2762,10 @@ class NotificationListAPIView(ListAPIView):
     pagination_class = BasePagination
 
     def get_queryset(self):
+        try:
+            NotificationService.sync_student_graduation_notifications(self.request.user)
+        except Exception:
+            pass
         queryset = Notification.objects.filter(user=self.request.user)
         
         # Filter by read status
@@ -2782,6 +2790,10 @@ class NotificationUnreadCountAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        try:
+            NotificationService.sync_student_graduation_notifications(request.user)
+        except Exception:
+            pass
         unread_count = Notification.objects.filter(
             user=request.user,
             is_read=False

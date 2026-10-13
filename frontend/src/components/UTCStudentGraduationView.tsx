@@ -461,17 +461,34 @@ export const UTCStudentGraduationView: React.FC = () => {
                     <span className="text-xs font-mono px-2.5 py-1 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 font-semibold">
                       Trạng thái: {projectData.status_display || projectData.status}
                     </span>
-                    {projectData.is_force_approved && (
-                      <span className="text-xs px-2.5 py-1 rounded bg-amber-500/10 text-amber-400 border border-amber-500/30 font-bold">
-                        ⚡ Đã được duyệt ngoại lệ (Force Approved)
+                    {/* Phê duyệt đề tài từ Khoa */}
+                    {(projectData.topic_review_status === 'APPROVED' || projectData.status === 'TOPIC_APPROVED') && (
+                      <span className="text-xs px-2.5 py-1 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold">
+                        ✅ Khoa đã phê duyệt đề tài
                       </span>
                     )}
-                    {projectData.academic_clearance_status === 'CLEARED' && (
+                    {(projectData.topic_review_status === 'REVISION_REQUIRED' || projectData.status === 'TOPIC_REVISION') && (
+                      <span className="text-xs px-2.5 py-1 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40 font-bold animate-pulse">
+                        ⚠️ Khoa yêu cầu sửa đề tài
+                      </span>
+                    )}
+                    {projectData.topic_review_status === 'GV_CONFIRMED' && (
+                      <span className="text-xs px-2.5 py-1 rounded bg-blue-500/20 text-blue-300 border border-blue-500/40 font-medium">
+                        ⏳ Chờ Khoa phê duyệt đề tài
+                      </span>
+                    )}
+                    {/* Xét duyệt điều kiện học vụ */}
+                    {(projectData.initial_eligibility === 'FORCE_APPROVED' || projectData.is_force_approved) && (
+                      <span className="text-xs px-2.5 py-1 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold">
+                        ⚡ Duyệt đặc cách (Force Approved)
+                      </span>
+                    )}
+                    {(projectData.initial_eligibility === 'ELIGIBLE' || projectData.final_academic_eligibility === 'ELIGIBLE' || projectData.academic_clearance_status === 'ELIGIBLE' || projectData.academic_clearance_status === 'CLEARED') && (
                       <span className="text-xs px-2.5 py-1 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold">
                         ✅ Đủ điều kiện học vụ
                       </span>
                     )}
-                    {projectData.academic_clearance_status === 'FAILED' && (
+                    {(projectData.initial_eligibility === 'INELIGIBLE' || projectData.final_academic_eligibility === 'INELIGIBLE' || projectData.academic_clearance_status === 'FAILED') && !projectData.is_force_approved && (
                       <span className="text-xs px-2.5 py-1 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40 font-bold">
                         ⚠️ Chưa đạt điều kiện học vụ
                       </span>
@@ -491,6 +508,70 @@ export const UTCStudentGraduationView: React.FC = () => {
                   <span>Đơn xin bảo lưu ({deferralRequests.length})</span>
                 </button>
               </div>
+
+              {/* Action Banner: Khi Khoa yêu cầu sửa đề tài */}
+              {(projectData.topic_review_status === 'REVISION_REQUIRED' || projectData.status === 'TOPIC_REVISION') && (
+                <div className="p-4 rounded-xl bg-gradient-to-r from-rose-950/60 to-slate-900 border border-rose-500/50 text-rose-200 text-xs space-y-2 shadow-lg">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl">🚨</span>
+                      <div>
+                        <h4 className="font-bold text-sm text-rose-100">Khoa CNTT Yêu Cầu Chỉnh Sửa Lại Đề Tài</h4>
+                        <p className="text-[11px] text-rose-300/80">Bạn cần trao đổi với GVHD, điều chỉnh lại đề tài và nộp lại bản thảo.</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setActiveTab('outline')}
+                      className="px-3.5 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-bold transition flex items-center gap-1.5 shadow"
+                    >
+                      <span>✏️ Chỉnh sửa đề tài ngay</span>
+                      <span>➔</span>
+                    </button>
+                  </div>
+                  <div className="p-3 rounded-lg bg-black/40 border border-rose-500/30 text-rose-200 text-xs">
+                    <span className="font-semibold text-rose-300">Ý kiến nhận xét từ Ban Chủ nhiệm Khoa: </span>
+                    <strong className="text-white">"{projectData.topic_revision_notes || 'Cần điều chỉnh nội dung theo góp ý của Khoa'}"</strong>
+                  </div>
+                </div>
+              )}
+
+              {/* Action Banner: Khi Khoa đã phê duyệt đề tài */}
+              {(projectData.topic_review_status === 'APPROVED' || projectData.status === 'TOPIC_APPROVED') && (
+                <div className="p-4 rounded-xl bg-gradient-to-r from-emerald-950/60 to-slate-900 border border-emerald-500/50 text-emerald-200 text-xs space-y-2 shadow-lg">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl">🎉</span>
+                      <div>
+                        <h4 className="font-bold text-sm text-emerald-100">Đề Tài Đã Được Khoa Phê Duyệt Chính Thức</h4>
+                        <p className="text-[11px] text-emerald-300/80">Đề tài đã hoàn tất phê duyệt. Sinh viên tiến hành bước kế tiếp: Xuất & Ký nộp Đề cương.</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setActiveTab('outline')}
+                      className="px-3.5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition flex items-center gap-1.5 shadow"
+                    >
+                      <span>📄 Xuất Đề Cương & Nộp Bản Ký</span>
+                      <span>➔</span>
+                    </button>
+                  </div>
+                  <p className="text-slate-300 text-[11px]">
+                    Hãy vào mục <b>"3. Đề cương ĐATN"</b> để tải file PDF đề cương chi tiết chuẩn UTC, lấy chữ ký GVHD và tải bản scan lên hệ thống để lưu trữ.
+                  </p>
+                </div>
+              )}
+
+              {/* Notification: Khoa Force Approve đặc cách */}
+              {projectData.initial_eligibility === 'FORCE_APPROVED' && (
+                <div className="p-3.5 rounded-xl bg-amber-950/40 border border-amber-500/40 text-amber-200 text-xs space-y-1">
+                  <div className="flex items-center gap-2 font-bold text-amber-100">
+                    <span>⚡</span>
+                    <span>Quyết định Đặc cách (Force Approve) từ Ban Chủ nhiệm Khoa:</span>
+                  </div>
+                  <p className="text-slate-300">
+                    {projectData.ineligibility_reason || 'Khoa phê duyệt đặc cách theo đơn giải trình và cho phép sinh viên tiếp tục làm ĐATN.'}
+                  </p>
+                </div>
+              )}
 
               {projectData.status === 'DISQUALIFIED' && (
                 <div className="p-4 rounded-xl bg-rose-950/40 border border-rose-500/40 text-rose-300 text-xs space-y-1">
@@ -801,19 +882,53 @@ export const UTCStudentGraduationView: React.FC = () => {
                 <h4 className="text-sm font-bold text-slate-200">1. Bản thảo Đề tài (Topic Draft & Approval)</h4>
                 <p className="text-[11px] text-slate-400">GV và SV cùng xác định tên đề tài trước khi trình Khoa phê duyệt.</p>
               </div>
-              <span className={`text-xs px-2.5 py-1 rounded font-bold border ${
-                projectData?.status === 'TOPIC_APPROVED' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' :
-                projectData?.status === 'TOPIC_CONFIRMED' ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' :
-                projectData?.status === 'TOPIC_REVISION' ? 'bg-rose-500/20 text-rose-400 border-rose-500/30' :
-                'bg-amber-500/20 text-amber-400 border-amber-500/30'
-              }`}>
-                {projectData?.status_display || projectData?.status || 'DRAFT'}
-              </span>
+              {(() => {
+                const isTopicApproved = projectData?.topic_review_status === 'APPROVED' || projectData?.status === 'TOPIC_APPROVED';
+                const isTopicRevision = projectData?.topic_review_status === 'REVISION_REQUIRED' || projectData?.status === 'TOPIC_REVISION';
+                const isTopicConfirmed = projectData?.topic_review_status === 'GV_CONFIRMED' || projectData?.status === 'TOPIC_CONFIRMED' || projectData?.status === 'PENDING_REVIEW';
+
+                return (
+                  <span className={`text-xs px-2.5 py-1 rounded font-bold border ${
+                    isTopicApproved ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 font-bold' :
+                    isTopicRevision ? 'bg-rose-500/20 text-rose-300 border-rose-500/40 font-bold animate-pulse' :
+                    isTopicConfirmed ? 'bg-blue-500/20 text-blue-300 border-blue-500/40 font-medium' :
+                    'bg-amber-500/20 text-amber-400 border-amber-500/30'
+                  }`}>
+                    {isTopicApproved ? '✅ Khoa đã phê duyệt đề tài' :
+                     isTopicRevision ? '⚠️ Khoa yêu cầu sửa đề tài' :
+                     isTopicConfirmed ? '⏳ GV đã xác nhận / Chờ Khoa duyệt' :
+                     'Bản thảo (Draft)'}
+                  </span>
+                );
+              })()}
             </div>
 
-            {projectData?.status === 'TOPIC_REVISION' && (
-              <div className="p-3 rounded-lg bg-rose-950/40 border border-rose-500/40 text-rose-300 text-xs">
-                ⚠️ <b>Yêu cầu chỉnh sửa:</b> Ban Chủ nhiệm Khoa yêu cầu sửa đổi lại đề tài. Vui lòng thống nhất lại với GVHD và cập nhật lại bản thảo.
+            {/* Banner: Khoa yêu cầu sửa đề tài */}
+            {(projectData?.topic_review_status === 'REVISION_REQUIRED' || projectData?.status === 'TOPIC_REVISION') && (
+              <div className="p-4 rounded-xl bg-gradient-to-r from-rose-950/60 to-slate-900 border border-rose-500/50 text-rose-200 text-xs space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">🚨</span>
+                  <span className="font-bold text-sm text-rose-100">Khoa CNTT Yêu Cầu Chỉnh Sửa Lại Đề Tài:</span>
+                </div>
+                <div className="p-2.5 rounded-lg bg-black/40 border border-rose-500/30 text-rose-200 font-mono text-xs">
+                  "{projectData?.topic_revision_notes || 'Cần điều chỉnh nội dung nghiên cứu theo góp ý của Khoa'}"
+                </div>
+                <p className="text-slate-300 text-[11px]">
+                  Vui lòng điều chỉnh lại tên đề tài bên dưới, trao đổi với GVHD và bấm <b>"Lưu & Nộp Lại Bản Thảo"</b> để gửi lại cho Khoa xét duyệt.
+                </p>
+              </div>
+            )}
+
+            {/* Banner: Khoa đã duyệt đề tài */}
+            {(projectData?.topic_review_status === 'APPROVED' || projectData?.status === 'TOPIC_APPROVED') && (
+              <div className="p-4 rounded-xl bg-gradient-to-r from-emerald-950/60 to-slate-900 border border-emerald-500/50 text-emerald-200 text-xs space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">🎉</span>
+                  <span className="font-bold text-sm text-emerald-100">Đề Tài Đã Được Khoa Phê Duyệt Chính Thức</span>
+                </div>
+                <p className="text-slate-300 text-[11px]">
+                  Tên đề tài đã được chốt và khóa chỉnh sửa. Vui lòng chuyển xuống <b>Mục 2 (Tải Đề Cương Tự Động)</b> để xuất PDF, in lấy chữ ký GVHD và tải bản scan lên <b>Mục 3 (Ký Nộp Đề Cương)</b>.
+                </p>
               </div>
             )}
 
@@ -826,7 +941,7 @@ export const UTCStudentGraduationView: React.FC = () => {
                     required
                     value={draftTopicVi}
                     onChange={(e) => setDraftTopicVi(e.target.value)}
-                    disabled={projectData?.status === 'TOPIC_APPROVED'}
+                    disabled={projectData?.topic_review_status === 'APPROVED' || projectData?.status === 'TOPIC_APPROVED'}
                     placeholder="VD: Nghiên cứu xây dựng ứng dụng hỗ trợ phân luồng giao thông thông minh..."
                     className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-slate-100 text-xs focus:outline-none focus:border-blue-500 disabled:opacity-60"
                   />
@@ -838,20 +953,28 @@ export const UTCStudentGraduationView: React.FC = () => {
                     type="text"
                     value={draftTopicEn}
                     onChange={(e) => setDraftTopicEn(e.target.value)}
-                    disabled={projectData?.status === 'TOPIC_APPROVED'}
+                    disabled={projectData?.topic_review_status === 'APPROVED' || projectData?.status === 'TOPIC_APPROVED'}
                     placeholder="VD: Research and development of an intelligent traffic routing application..."
                     className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-slate-100 text-xs focus:outline-none focus:border-blue-500 disabled:opacity-60"
                   />
                 </div>
 
-                {projectData?.status !== 'TOPIC_APPROVED' && (
+                {projectData?.topic_review_status !== 'APPROVED' && projectData?.status !== 'TOPIC_APPROVED' && (
                   <div className="flex justify-end pt-1">
                     <button
                       type="submit"
                       disabled={savingDraftTopic}
-                      className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-semibold transition disabled:opacity-50"
+                      className={`px-5 py-2.5 text-white rounded-lg text-xs font-bold transition disabled:opacity-50 shadow-lg ${
+                        projectData?.topic_review_status === 'REVISION_REQUIRED' || projectData?.status === 'TOPIC_REVISION'
+                          ? 'bg-rose-600 hover:bg-rose-500 shadow-rose-600/30'
+                          : 'bg-blue-600 hover:bg-blue-500 shadow-blue-600/30'
+                      }`}
                     >
-                      {savingDraftTopic ? 'Đang lưu...' : '💾 Lưu bản thảo đề tài (Draft)'}
+                      {savingDraftTopic
+                        ? 'Đang lưu...'
+                        : projectData?.topic_review_status === 'REVISION_REQUIRED' || projectData?.status === 'TOPIC_REVISION'
+                        ? '🚀 Lưu & Nộp Lại Bản Thảo Đề Tài'
+                        : '💾 Lưu Bản Thảo Đề Tài (Draft)'}
                     </button>
                   </div>
                 )}

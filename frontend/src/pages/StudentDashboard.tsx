@@ -72,6 +72,13 @@ const StudentDashboard: React.FC = () => {
     loadData();
   }, []);
 
+  // Reload overview data when switching back to overview
+  useEffect(() => {
+    if (activeTab === 'overview') {
+      loadData();
+    }
+  }, [activeTab]);
+
   // Reload projects when project tab is clicked
   useEffect(() => {
     if (activeTab === 'project' && profile?.groupmate_id) {
@@ -278,7 +285,120 @@ const StudentDashboard: React.FC = () => {
           {activeTab === 'overview' && (
             <>
               {/* UTC FYP Progress Timeline */}
-              <UTCFypTimeline currentStep={profile?.groupmate_id ? 3 : 1} />
+              <UTCFypTimeline currentStep={profile?.timeline_step || (profile?.graduation_project ? (profile.graduation_project.status === 'DEFENSE_READY' ? 5 : 3) : 1)} />
+
+              {/* UTC Academic Batch & Project Quick Action Banner */}
+              {profile?.academic_batch && (
+                <div
+                  className="card utc-batch-banner"
+                  style={{
+                    background: 'linear-gradient(135deg, #0a2540 0%, #004b87 100%)',
+                    color: '#ffffff',
+                    borderRadius: '12px',
+                    padding: '24px',
+                    marginBottom: '20px',
+                    boxShadow: '0 8px 24px rgba(0, 43, 73, 0.25)',
+                    border: '1px solid rgba(255, 255, 255, 0.15)',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px' }}>
+                    <div style={{ flex: '1 1 350px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                        <span style={{
+                          background: '#38bdf8',
+                          color: '#0f172a',
+                          fontSize: '0.75rem',
+                          fontWeight: 800,
+                          padding: '3px 10px',
+                          borderRadius: '20px',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.5px'
+                        }}>
+                          Đợt Đồ Án Chính Thức
+                        </span>
+                        <span style={{ fontSize: '0.85rem', color: '#93c5fd' }}>
+                          Mã đợt: {profile.academic_batch.batch_code}
+                        </span>
+                      </div>
+                      <h2 style={{ margin: '0 0 10px 0', fontSize: '1.35rem', fontWeight: 700, color: '#ffffff' }}>
+                        {profile.academic_batch.batch_name}
+                      </h2>
+
+                      {profile.graduation_project ? (
+                        <div style={{ background: 'rgba(255, 255, 255, 0.08)', borderRadius: '8px', padding: '14px 16px', marginTop: '12px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', marginBottom: '6px' }}>
+                            <span style={{ fontSize: '0.85rem', color: '#93c5fd' }}>
+                              Đề tài được phân công:
+                            </span>
+                            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                              {(profile.graduation_project.topic_review_status === 'APPROVED' || profile.graduation_project.status === 'TOPIC_APPROVED') && (
+                                <span style={{ background: '#059669', color: '#fff', fontSize: '0.75rem', fontWeight: 700, padding: '2px 8px', borderRadius: '12px' }}>
+                                  ✅ Khoa đã duyệt đề tài
+                                </span>
+                              )}
+                              {(profile.graduation_project.topic_review_status === 'REVISION_REQUIRED' || profile.graduation_project.status === 'TOPIC_REVISION') && (
+                                <span style={{ background: '#dc2626', color: '#fff', fontSize: '0.75rem', fontWeight: 700, padding: '2px 8px', borderRadius: '12px' }}>
+                                  ⚠️ Khoa yêu cầu sửa đề tài
+                                </span>
+                              )}
+                              {profile.graduation_project.initial_eligibility === 'FORCE_APPROVED' && (
+                                <span style={{ background: '#d97706', color: '#fff', fontSize: '0.75rem', fontWeight: 700, padding: '2px 8px', borderRadius: '12px' }}>
+                                  ⚡ Đặc cách (Force Approve)
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <div style={{ fontSize: '1.05rem', fontWeight: 600, color: '#f8fafc', marginBottom: '8px' }}>
+                            {profile.graduation_project.topic_title_vi}
+                          </div>
+                          {(profile.graduation_project.topic_review_status === 'REVISION_REQUIRED' || profile.graduation_project.status === 'TOPIC_REVISION') && (
+                            <div style={{ background: 'rgba(239, 68, 68, 0.2)', border: '1px solid rgba(239, 68, 68, 0.4)', borderRadius: '6px', padding: '8px 12px', marginBottom: '10px', fontSize: '0.85rem', color: '#fca5a5' }}>
+                              <strong>Ý kiến nhận xét từ Khoa: </strong> {profile.graduation_project.topic_revision_notes || 'Cần chỉnh sửa lại đề tài theo góp ý'}
+                            </div>
+                          )}
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '14px', fontSize: '0.85rem', color: '#cbd5e1' }}>
+                            <span>👨‍🏫 GVHD: <strong>{profile.graduation_project.supervisor_name || 'Đang phân công'}</strong></span>
+                            <span>📊 Trạng thái: <strong style={{ color: '#34d399' }}>{profile.graduation_project.status_display || profile.graduation_project.status}</strong></span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div style={{ background: 'rgba(234, 179, 8, 0.15)', border: '1px solid rgba(250, 204, 21, 0.3)', borderRadius: '8px', padding: '12px 16px', marginTop: '12px' }}>
+                          <div style={{ color: '#fef08a', fontSize: '0.9rem', fontWeight: 500 }}>
+                            ⚠️ Bạn đã được thêm vào đợt làm đồ án nhưng chưa được phân công Đề tài & GVHD. Hãy vào mục Khảo sát & Nguyện vọng để chọn GVHD mong muốn!
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div style={{ alignSelf: 'center' }}>
+                      <button
+                        onClick={() => setActiveTab('utc_graduation')}
+                        style={{
+                          background: '#38bdf8',
+                          color: '#0f172a',
+                          border: 'none',
+                          padding: '12px 24px',
+                          borderRadius: '8px',
+                          fontSize: '0.95rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          boxShadow: '0 4px 12px rgba(56, 189, 248, 0.35)',
+                          transition: 'all 0.2s ease',
+                        }}
+                        onMouseEnter={(e) => (e.currentTarget.style.transform = 'translateY(-2px)')}
+                        onMouseLeave={(e) => (e.currentTarget.style.transform = 'translateY(0)')}
+                      >
+                        <span>📚</span>
+                        <span>{profile.graduation_project ? 'Vào Không Gian Đồ Án UTC' : 'Điền Khảo Sát & Nguyện Vọng Ngay'}</span>
+                        <span>➔</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="card">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
@@ -307,16 +427,34 @@ const StudentDashboard: React.FC = () => {
                   </p>
                   <p><strong>{t('profile.department', 'Khoa / Ngành Đào Tạo')}:</strong> {profile?.department || 'N/A'}</p>
                   <p><strong>{t('profile.semester', 'Học Kỳ Hiện Tại')}:</strong> {profile?.semester || 'N/A'}</p>
-                  <p><strong>{t('profile.batch', 'Khóa Học')}:</strong> {profile?.batch_no || 'N/A'}</p>
+                  <p><strong>{t('profile.batch', 'Đợt Đồ Án / Khóa Học')}:</strong> {profile?.academic_batch?.batch_name || profile?.batch_no || 'N/A'}</p>
                   <p>
-                    <strong>{t('profile.groupStatus', 'Trạng Thái Nhóm')}:</strong>{' '}
-                    {profile?.groupmate_id ? (
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                        <span>{t('profile.inGroup', 'Đã Có Nhóm')} (#{profile.groupmate_id})</span>
-                        <CopyButton text={String(profile.groupmate_id)} label="Copy mã nhóm" tooltipText="Đã sao chép mã nhóm vào bộ nhớ tạm" />
+                    <strong>Trạng Thái Đề Tài:</strong>{' '}
+                    {profile?.graduation_project ? (
+                      <span style={{ fontWeight: 600 }}>
+                        {(profile.graduation_project.topic_review_status === 'APPROVED' || profile.graduation_project.status === 'TOPIC_APPROVED') ? (
+                          <span style={{ color: '#059669' }}>
+                            ✅ Khoa đã duyệt ({profile.graduation_project.topic_title_vi})
+                          </span>
+                        ) : (profile.graduation_project.topic_review_status === 'REVISION_REQUIRED' || profile.graduation_project.status === 'TOPIC_REVISION') ? (
+                          <span style={{ color: '#dc2626' }}>
+                            ⚠️ Khoa yêu cầu sửa đề tài {profile.graduation_project.topic_revision_notes ? `[${profile.graduation_project.topic_revision_notes}]` : ''} ({profile.graduation_project.topic_title_vi})
+                          </span>
+                        ) : (
+                          <span style={{ color: '#047857' }}>
+                            Đã phân công ({profile.graduation_project.topic_title_vi})
+                          </span>
+                        )}
+                        {profile.graduation_project.initial_eligibility === 'FORCE_APPROVED' && (
+                          <span style={{ marginLeft: '8px', color: '#d97706', fontSize: '0.85rem' }}>
+                            (⚡ Đặc cách: {profile.graduation_project.ineligibility_reason || 'Khoa duyệt đặc cách'})
+                          </span>
+                        )}
                       </span>
                     ) : (
-                      t('profile.noGroup', 'Chưa Có Nhóm')
+                      <span style={{ color: '#d97706', fontWeight: 500 }}>
+                        Chờ phân công / Chưa điền khảo sát
+                      </span>
                     )}
                   </p>
                 </div>
