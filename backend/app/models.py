@@ -1058,6 +1058,31 @@ class Notification(models.Model):
         return f"Thông báo: {self.user.username} - {self.title}"
 
 
+class SupervisorGroupChatMessage(models.Model):
+    """Tin nhắn thảo luận chung giữa GVHD và các sinh viên cùng nhóm hướng dẫn (UTC Cohort)"""
+    supervisor = models.ForeignKey(
+        Supervisor, on_delete=models.CASCADE, related_name="group_chat_messages"
+    )
+    sender = models.ForeignKey(
+        CustomUser, on_delete=models.CASCADE, related_name="sent_group_chat_messages"
+    )
+    message = models.TextField(blank=True, default="")
+    attachment = models.FileField(upload_to="chat_attachments/", blank=True, null=True)
+    attachment_name = models.CharField(max_length=255, blank=True, null=True)
+    attachment_type = models.CharField(max_length=100, blank=True, null=True)
+    attachment_size = models.PositiveIntegerField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "app_supervisorgroupchatmessage"
+        ordering = ["created_at"]
+        verbose_name = "Tin nhắn nhóm GVHD"
+        verbose_name_plural = "Danh sách Tin nhắn nhóm GVHD"
+
+    def __str__(self):
+        return f"[{self.supervisor}] {self.sender.username}: {self.message[:30]}"
+
+
 
 # ==============================================================================
 # COMPATIBILITY LAYER: UNMANAGED LEGACY MODELS (Zero DB Tables Created on Neon)

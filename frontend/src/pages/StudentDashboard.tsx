@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { apiService } from '../services/api';
@@ -8,7 +9,6 @@ import UTCAppLayout from '../components/UTCAppLayout';
 import ProjectModal from '../components/ProjectModal';
 import SupervisorRequestModal from '../components/SupervisorRequestModal';
 import DocumentsList from '../components/DocumentsList';
-import ChatRoom from '../components/ChatRoom';
 import SupervisorRequestsList from '../components/SupervisorRequestsList';
 import CommentsSection from '../components/CommentsSection';
 import SearchFilter from '../components/SearchFilter';
@@ -18,9 +18,10 @@ import CommitteeOfferedProjects from '../components/CommitteeOfferedProjects';
 import UTCFypTimeline from '../components/UTCFypTimeline';
 import UTCEvaluationSheetModal from '../components/UTCEvaluationSheetModal';
 import { UTCStudentGraduationView } from '../components/UTCStudentGraduationView';
-import { StudentGroupManagement } from '../components/StudentGroupManagement';
+import { UTCSupervisorGroupChatView } from '../components/UTCSupervisorGroupChatView';
 import { SkeletonProfile, SkeletonCardGrid } from '../components/SkeletonLoader';
 import CopyButton from '../components/CopyButton';
+import { getProjectStageInfo } from '../utils/graduationStages';
 import './Dashboard.css';
 import '../components/SkeletonLoader.css';
 import '../components/CommentsSection.css';
@@ -32,9 +33,52 @@ import '../components/CommitteeOfferedProjects.css';
 const StudentDashboard: React.FC = () => {
   const { t } = useTranslation();
   const { user, logout } = useAuth();
+  const [searchParams] = useSearchParams();
   const student = user as Student;
   const [activeTab, setActiveTab] = useState('overview');
   const [profile, setProfile] = useState<Student | null>(null);
+
+  // Synchronize activeTab with URL search params and global notification events
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    const subtab = searchParams.get('subtab');
+    if (subtab && ['project', 'survey', 'outline', 'weekly', 'supervision', 'grade'].includes(subtab)) {
+      setActiveTab(subtab);
+    } else if (tab) {
+      if (tab === 'utc_graduation') {
+        const curStage = getProjectStageInfo(profile?.graduation_project);
+        setActiveTab(curStage.key);
+      } else {
+        setActiveTab(tab);
+      }
+    }
+
+    const handleSwitchTab = (e: any) => {
+      const targetTab = e.detail?.tab;
+      if (targetTab) {
+        if (targetTab === 'utc_graduation') {
+          const curStage = getProjectStageInfo(profile?.graduation_project);
+          setActiveTab(curStage.key);
+        } else {
+          setActiveTab(targetTab);
+        }
+      }
+    };
+
+    const handleSwitchSubtab = (e: any) => {
+      const targetSubtab = e.detail?.subtab;
+      if (targetSubtab && ['project', 'survey', 'outline', 'weekly', 'supervision', 'grade'].includes(targetSubtab)) {
+        setActiveTab(targetSubtab);
+      }
+    };
+
+    window.addEventListener('app:switch-tab', handleSwitchTab);
+    window.addEventListener('app:switch-subtab', handleSwitchSubtab);
+    return () => {
+      window.removeEventListener('app:switch-tab', handleSwitchTab);
+      window.removeEventListener('app:switch-subtab', handleSwitchSubtab);
+    };
+  }, [searchParams, profile?.graduation_project]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [projectCategories, setProjectCategories] = useState<ProjectCategory[]>([]);
   const [supervisorRequests, setSupervisorRequests] = useState<SupervisorOfStudentGroup[]>([]);
@@ -207,85 +251,193 @@ const StudentDashboard: React.FC = () => {
     );
   }
 
-  return (
-    <UTCAppLayout user={student} onLogout={logout} activeTab={activeTab} onTabChange={setActiveTab}>
-      <div className="container">
-        <div className="dashboard-header">
-          <h1>{t('dashboard.studentTitle', 'Bảng Điều Khiển Sinh Viên UTC')}</h1>
-          <p>{t('dashboard.welcome', 'Xin chào')}, {student?.user?.username}</p>
-        </div>
+  const graduationSubtabs = ['project', 'survey', 'outline', 'weekly', 'supervision', 'grade'];
+  const isGraduationTab = graduationSubtabs.includes(activeTab) || activeTab === 'utc_graduation';
 
-        <div className="tabs">
-          <button
-            className={`tab ${activeTab === 'utc_graduation' ? 'active' : ''}`}
-            onClick={() => setActiveTab('utc_graduation')}
-            style={{ fontWeight: 'bold', background: activeTab === 'utc_graduation' ? '#003366' : undefined, color: activeTab === 'utc_graduation' ? '#fff' : undefined }}
-          >
-            📚 Đồ Án Tốt Nghiệp UTC (Khảo sát, Báo cáo & Điểm)
-          </button>
-          <button
-            className={`tab ${activeTab === 'overview' ? 'active' : ''}`}
-            onClick={() => setActiveTab('overview')}
-          >
-            {t('nav.overview', 'Tổng Quan')}
-          </button>
-          <button
-            className={`tab ${activeTab === 'groups' ? 'active' : ''}`}
-            onClick={() => setActiveTab('groups')}
-          >
-            👥 {t('nav.groups', 'Nhóm Đồ Án')}
-          </button>
-          {profile?.groupmate_id && (
-            <>
-              <button
-                className={`tab ${activeTab === 'project' ? 'active' : ''}`}
-                onClick={() => setActiveTab('project')}
-              >
-                {t('nav.project', 'Đề Tài Đồ Án')}
-              </button>
-              <button
-                className={`tab ${activeTab === 'supervisor' ? 'active' : ''}`}
-                onClick={() => setActiveTab('supervisor')}
-              >
-                {t('nav.supervisor', 'Giảng Viên Hướng Dẫn')}
-              </button>
-              <button
-                className={`tab ${activeTab === 'documents' ? 'active' : ''}`}
-                onClick={() => setActiveTab('documents')}
-              >
-                {t('nav.documents', 'Tài Liệu Đồ Án')}
-              </button>
-              <button
-                className={`tab ${activeTab === 'chat' ? 'active' : ''}`}
-                onClick={() => setActiveTab('chat')}
-              >
-                {t('nav.chat', 'Trao Đổi & Thảo Luận')}
-              </button>
-            </>
-          )}
-          <button
-            className={`tab ${activeTab === 'templates' ? 'active' : ''}`}
-            onClick={() => setActiveTab('templates')}
-          >
-            {t('nav.templates', 'Biểu Mẫu Chuẩn')}
-          </button>
-          {profile?.semester === '8' && (
-            <button
-              className={`tab ${activeTab === 'external' ? 'active' : ''}`}
-              onClick={() => setActiveTab('external')}
+  const getTabHeaderInfo = (tab: string) => {
+    switch (tab) {
+      case 'overview':
+        return {
+          title: 'Tổng Quan Dashboard & Học Vụ',
+          subtitle: 'Theo dõi tiến trình 5 bước UTC FYP Milestone, hồ sơ học vụ và lịch gặp GVHD',
+          badge: 'Tổng quan',
+        };
+      case 'project':
+      case 'utc_graduation':
+        return {
+          title: 'GĐ 1: Đề Tài & Giảng Viên Hướng Dẫn',
+          subtitle: 'Thông tin chi tiết đề tài được phân công, trạng thái phê duyệt từ Khoa và điều kiện học vụ',
+          badge: 'Giai đoạn 1',
+        };
+      case 'survey':
+        return {
+          title: 'GĐ 2: Khảo Sát Doanh Nghiệp & Nguyện Vọng Đề Tài',
+          subtitle: 'Đăng ký 3 nguyện vọng GVHD, hướng nghiên cứu mong muốn và thông tin thực tập doanh nghiệp',
+          badge: 'Giai đoạn 2',
+        };
+      case 'outline':
+        return {
+          title: 'GĐ 3: Đề Cương ĐATN & Nộp Bản Ký Duyệt',
+          subtitle: 'Dự thảo đề tài song ngữ, xuất phiếu đề cương PDF chuẩn UTC và nộp bản scan có chữ ký GVHD',
+          badge: 'Giai đoạn 3',
+        };
+      case 'weekly':
+        return {
+          title: 'GĐ 4: Báo Cáo Tiến Độ Tuần 1 - 15',
+          subtitle: 'Nộp báo cáo định kỳ hàng tuần, đính kèm tài liệu, link GitHub và nhận xét đánh giá của GVHD',
+          badge: 'Giai đoạn 4',
+        };
+      case 'supervision':
+        return {
+          title: 'GĐ 5: Task Board & Nhật Ký Hướng Dẫn',
+          subtitle: 'Quản lý bảng nhiệm vụ Kanban do GVHD giao, nộp sản phẩm hoàn thành và xem biên bản các buổi họp',
+          badge: 'Giai đoạn 5',
+        };
+      case 'grade':
+        return {
+          title: 'GĐ 6: Bảng Điểm Tổng Hợp & Đánh Giá Bảo Vệ UTC',
+          subtitle: 'Điểm quá trình GVHD, Điểm phản biện, Điểm Hội đồng bảo vệ và đơn xin hoãn/bảo lưu ĐATN',
+          badge: 'Giai đoạn 6',
+        };
+      case 'chat':
+      case 'groups':
+        return {
+          title: 'Nhóm Đồ Án & Kênh Chat Trực Tiếp GVHD',
+          subtitle: 'Kênh trao đổi chuyên môn trực tiếp giữa Giảng viên hướng dẫn và các sinh viên cùng nhóm GVHD',
+          badge: 'Trao đổi',
+        };
+      case 'templates':
+        return {
+          title: 'Kho Biểu Mẫu Chuẩn & Quy Định ĐATN UTC',
+          subtitle: 'Tải về toàn bộ biểu mẫu chuẩn, mẫu báo cáo, slide bảo vệ và quy chế đồ án tốt nghiệp UTC',
+          badge: 'Tài nguyên',
+        };
+      case 'external':
+        return {
+          title: 'Hội Đồng Đánh Giá & Điểm Phản Biện ĐATN',
+          subtitle: 'Thông tin phân bổ hội đồng chấm bảo vệ và kết quả đánh giá phản biện độc lập kỳ 8',
+          badge: 'Hội đồng',
+        };
+      default:
+        return {
+          title: 'Bảng Điều Khiển Sinh Viên UTC',
+          subtitle: 'Cổng thông tin đồ án tốt nghiệp Trường Đại học Giao thông Vận tải',
+          badge: 'Hệ thống',
+        };
+    }
+  };
+
+  const currentStageInfo = getProjectStageInfo(profile?.graduation_project);
+
+  return (
+    <UTCAppLayout
+      user={student}
+      onLogout={logout}
+      activeTab={activeTab}
+      onTabChange={setActiveTab}
+      currentStageNumber={currentStageInfo.number}
+    >
+      <div className="container">
+        {/* Modern Executive Header Card (Left-sidebar first UI like Admin) */}
+        {(() => {
+          const tabInfo = getTabHeaderInfo(activeTab);
+          return (
+            <div
+              className="utc-page-header-card"
+              style={{
+                background: '#ffffff',
+                borderRadius: '12px',
+                padding: '18px 24px',
+                marginBottom: '20px',
+                border: '1px solid #e2e8f0',
+                boxShadow: '0 2px 8px rgba(0, 43, 73, 0.04)',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: '16px',
+              }}
             >
-              {t('nav.externalManagement', 'Hội Đồng & Chấm Phản Biện')}
-            </button>
-          )}
-        </div>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                  <span
+                    style={{
+                      fontSize: '0.72rem',
+                      fontWeight: 800,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px',
+                      padding: '2px 8px',
+                      borderRadius: '4px',
+                      background: '#e0f2fe',
+                      color: '#0369a1',
+                    }}
+                  >
+                    {tabInfo.badge}
+                  </span>
+                  <span style={{ fontSize: '0.85rem', color: '#64748b' }}>
+                    MSSV: <strong>{profile?.registration_no || student?.user?.username}</strong> • Đợt: <strong>{profile?.academic_batch?.batch_name || 'ĐATN UTC'}</strong>
+                  </span>
+                </div>
+                <h1 style={{ margin: 0, fontSize: '1.45rem', fontWeight: 800, color: '#0f172a' }}>
+                  {tabInfo.title}
+                </h1>
+                <p style={{ margin: '4px 0 0 0', fontSize: '0.88rem', color: '#64748b' }}>
+                  {tabInfo.subtitle}
+                </p>
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                {activeTab === 'overview' && (
+                  <button
+                    className="btn btn-outline"
+                    onClick={() => setShowUTCSheet(true)}
+                    style={{
+                      borderColor: '#004b87',
+                      color: '#004b87',
+                      fontWeight: 600,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '8px 16px',
+                      borderRadius: '8px',
+                      fontSize: '0.88rem',
+                    }}
+                  >
+                    📑 {t('dashboard.printUTCSheet', 'In Phiếu Chấm UTC')}
+                  </button>
+                )}
+                <button
+                  className="btn btn-secondary btn-sm"
+                  onClick={loadData}
+                  title="Tải lại dữ liệu mới nhất"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '8px 14px',
+                    borderRadius: '8px',
+                    fontSize: '0.88rem',
+                  }}
+                >
+                  🔄 Tải Lại
+                </button>
+              </div>
+            </div>
+          );
+        })()}
 
         <div className="tab-content">
-          {activeTab === 'utc_graduation' && <UTCStudentGraduationView />}
+          {isGraduationTab && (
+            <UTCStudentGraduationView
+              initialTab={(graduationSubtabs.includes(activeTab) ? activeTab : currentStageInfo.key) as any}
+              onSubtabChange={(st) => setActiveTab(st)}
+            />
+          )}
 
           {activeTab === 'overview' && (
             <>
               {/* UTC FYP Progress Timeline */}
-              <UTCFypTimeline currentStep={profile?.timeline_step || (profile?.graduation_project ? (profile.graduation_project.status === 'DEFENSE_READY' ? 5 : 3) : 1)} />
+              <UTCFypTimeline currentStep={profile?.timeline_step || 3} />
 
               {/* UTC Academic Batch & Project Quick Action Banner */}
               {profile?.academic_batch && (
@@ -372,27 +524,33 @@ const StudentDashboard: React.FC = () => {
 
                     <div style={{ alignSelf: 'center' }}>
                       <button
-                        onClick={() => setActiveTab('utc_graduation')}
+                        onClick={() => setActiveTab(currentStageInfo.key)}
                         style={{
-                          background: '#38bdf8',
-                          color: '#0f172a',
-                          border: 'none',
+                          background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+                          color: '#ffffff',
+                          border: '1px solid rgba(255, 255, 255, 0.25)',
                           padding: '12px 24px',
-                          borderRadius: '8px',
-                          fontSize: '0.95rem',
+                          borderRadius: '10px',
+                          fontSize: '0.92rem',
                           fontWeight: 700,
                           cursor: 'pointer',
                           display: 'flex',
                           alignItems: 'center',
                           gap: '8px',
-                          boxShadow: '0 4px 12px rgba(56, 189, 248, 0.35)',
-                          transition: 'all 0.2s ease',
+                          boxShadow: '0 4px 14px rgba(2, 132, 199, 0.4)',
+                          transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
                         }}
-                        onMouseEnter={(e) => (e.currentTarget.style.transform = 'translateY(-2px)')}
-                        onMouseLeave={(e) => (e.currentTarget.style.transform = 'translateY(0)')}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.transform = 'translateY(-2px)';
+                          e.currentTarget.style.boxShadow = '0 6px 20px rgba(2, 132, 199, 0.55)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = 'translateY(0)';
+                          e.currentTarget.style.boxShadow = '0 4px 14px rgba(2, 132, 199, 0.4)';
+                        }}
                       >
-                        <span>📚</span>
-                        <span>{profile.graduation_project ? 'Vào Không Gian Đồ Án UTC' : 'Điền Khảo Sát & Nguyện Vọng Ngay'}</span>
+                        <span>{currentStageInfo.icon}</span>
+                        <span>Vào GĐ {currentStageInfo.number}: {currentStageInfo.label}</span>
                         <span>➔</span>
                       </button>
                     </div>
@@ -407,15 +565,34 @@ const StudentDashboard: React.FC = () => {
                     className="btn btn-outline"
                     onClick={() => setShowUTCSheet(true)}
                     style={{
+                      background: 'rgba(0, 51, 102, 0.08)',
                       borderColor: '#003366',
                       color: '#003366',
-                      fontWeight: 600,
+                      fontWeight: 700,
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '6px',
+                      gap: '8px',
+                      padding: '8px 16px',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                      boxShadow: '0 2px 6px rgba(0, 51, 102, 0.12)',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = 'translateY(-2px)';
+                      e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 51, 102, 0.22)';
+                      e.currentTarget.style.background = '#003366';
+                      e.currentTarget.style.color = '#ffffff';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = '0 2px 6px rgba(0, 51, 102, 0.12)';
+                      e.currentTarget.style.background = 'rgba(0, 51, 102, 0.08)';
+                      e.currentTarget.style.color = '#003366';
                     }}
                   >
-                    📑 {t('dashboard.printUTCSheet', 'In Biên Bản / Phiếu Chấm UTC')}
+                    <span>📑</span>
+                    <span>{t('dashboard.printUTCSheet', 'In Biên Bản / Phiếu Chấm UTC')}</span>
                   </button>
                 </div>
                 <div className="profile-info">
@@ -627,14 +804,7 @@ const StudentDashboard: React.FC = () => {
             </>
           )}
 
-          {activeTab === 'groups' && (
-            <StudentGroupManagement
-              currentStudent={profile}
-              onProfileRefresh={loadData}
-            />
-          )}
-
-          {activeTab === 'project' && profile?.groupmate_id && (
+          {activeTab === 'legacy_project' && profile?.groupmate_id && (
             <div>
               <div className="card" style={{ marginBottom: '24px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
@@ -871,41 +1041,8 @@ const StudentDashboard: React.FC = () => {
             </>
           )}
 
-          {activeTab === 'chat' && profile?.groupmate_id && (
-            <>
-              {(() => {
-                const acceptedSupervisorGroup = supervisorRequests.find(r => r.status === 'accepted');
-                if (acceptedSupervisorGroup) {
-                  return <ChatRoom groupId={acceptedSupervisorGroup.id} />;
-                } else {
-                  return (
-                    <div className="card">
-                      <div className="empty-state">
-                        <h3>No Active Supervisor</h3>
-                        <p>You need an accepted supervisor to start chatting.</p>
-                        {supervisorRequests.length > 0 && (
-                          <div style={{ marginTop: '10px' }}>
-                            <p style={{ color: '#666' }}>Current supervisor request status:</p>
-                            <ul style={{ textAlign: 'left', display: 'inline-block' }}>
-                              {supervisorRequests.map((req, idx) => (
-                                <li key={idx}>
-                                  {req.supervisor?.user?.username || 'Unknown'}: {req.status}
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-                        {supervisorRequests.length === 0 && (
-                          <p style={{ marginTop: '10px', color: '#666' }}>
-                            Go to the "Supervisor" tab to request a supervisor.
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  );
-                }
-              })()}
-            </>
+          {(activeTab === 'chat' || activeTab === 'groups') && (
+            <UTCSupervisorGroupChatView currentStudent={profile} />
           )}
 
           {activeTab === 'templates' && (

@@ -138,20 +138,42 @@ class StudentProfileSerializer(serializers.ModelSerializer):
         return None
 
     def get_timeline_step(self, obj):
+        batch = getattr(obj, "academic_batch", None)
+        if not batch:
+            from app.models import AcademicBatch
+            batch = AcademicBatch.objects.filter(is_active=True).first()
+
+        batch_step = 1
+        if batch:
+            stage = getattr(batch, "current_stage", "")
+            if stage in ["PHASE_6_DEFENSE", "COMPLETED"]:
+                batch_step = 5
+            elif stage in ["PHASE_4_ELIGIBILITY", "PHASE_5_IN_PROGRESS"]:
+                batch_step = 4
+            elif stage == "PHASE_3_TOPIC":
+                batch_step = 3
+            elif stage == "PHASE_2_LOCKED":
+                batch_step = 2
+            elif stage in ["PHASE_1_SETUP", "PHASE_2_ALLOCATING"]:
+                batch_step = 1
+
         proj = getattr(obj, "graduation_project", None)
-        if not proj:
-            return 1
-        status = getattr(proj, "status", "")
-        review_status = getattr(proj, "topic_review_status", "")
-        if status in ["DEFENSE_READY", "DEFENSE_PASSED", "PASSED"]:
-            return 5
-        elif status in ["SUBMITTED", "FINAL_SUBMISSION"]:
-            return 4
-        elif status in ["IN_PROGRESS", "OUTLINE_APPROVED", "MIDTERM_EVALUATED"] or review_status == "APPROVED":
-            return 3
-        elif status in ["ALLOCATED", "TOPIC_CONFIRMED", "OUTLINE_PENDING"] or review_status in ["GV_CONFIRMED", "REVISION_REQUIRED"]:
-            return 2
-        return 1
+        project_step = 1
+        if proj:
+            status = getattr(proj, "status", "")
+            review_status = getattr(proj, "topic_review_status", "")
+            if status in ["DEFENSE_READY", "DEFENSE_PASSED", "PASSED"]:
+                project_step = 5
+            elif status in ["SUBMITTED", "FINAL_SUBMISSION"]:
+                project_step = 4
+            elif status in ["IN_PROGRESS", "OUTLINE_APPROVED", "MIDTERM_EVALUATED"] or review_status == "APPROVED":
+                project_step = 3
+            elif status in ["ALLOCATED", "TOPIC_CONFIRMED", "OUTLINE_PENDING"] or review_status in ["GV_CONFIRMED", "REVISION_REQUIRED"]:
+                project_step = 2
+            else:
+                project_step = 1
+
+        return max(batch_step, project_step)
 
     class Meta:
         model = Student
@@ -175,6 +197,23 @@ class StudentProfileSerializer(serializers.ModelSerializer):
 
 class SupervisorProfileSerializer(serializers.ModelSerializer):
     user = CustomUserSerializer(read_only=True)
+    timeline_step = serializers.SerializerMethodField(read_only=True)
+
+    def get_timeline_step(self, obj):
+        from app.models import AcademicBatch
+        batch = AcademicBatch.objects.filter(is_active=True).first()
+        if not batch:
+            return 3
+        stage = getattr(batch, "current_stage", "")
+        if stage in ["PHASE_6_DEFENSE", "COMPLETED"]:
+            return 5
+        elif stage in ["PHASE_4_ELIGIBILITY", "PHASE_5_IN_PROGRESS"]:
+            return 4
+        elif stage == "PHASE_3_TOPIC":
+            return 3
+        elif stage == "PHASE_2_LOCKED":
+            return 2
+        return 1
 
     class Meta:
         model = Supervisor
@@ -186,8 +225,9 @@ class SupervisorProfileSerializer(serializers.ModelSerializer):
             "department_name",
             "research_interest",
             "academic_background",
+            "timeline_step",
         ]
-        read_only_fields = ["id", "user", "supervisor_id", "academic_title", "department_name"]
+        read_only_fields = ["id", "user", "supervisor_id", "academic_title", "department_name", "timeline_step"]
 
 
 class CommitteeMemberProfileSerializer(serializers.ModelSerializer):

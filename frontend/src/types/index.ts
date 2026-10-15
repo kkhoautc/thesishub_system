@@ -87,6 +87,7 @@ export interface Supervisor {
   supervisor_id: string;
   research_interest?: string;
   academic_background?: string;
+  timeline_step?: number;
 }
 
 export interface CommitteeMember {

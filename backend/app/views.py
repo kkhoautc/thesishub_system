@@ -2220,20 +2220,22 @@ class ChatRoomAPIView(CreateAPIView, ListAPIView):
     queryset = ChatRoom.objects.all()
     pagination_class = ChatPagination
 
-    def get_queryset(self):
-        group_id = self.request.GET.get("group")
-        last_id = self.request.GET.get("last_id")
-        queryset = super().get_queryset().order_by("-created_at")  # Newest first for pagination
-        if group_id:
-            queryset = queryset.filter(group_id=group_id)
-        if last_id:
-            queryset = queryset.filter(id__gt=last_id)
-        return queryset
+    def get(self, request, *args, **kwargs):
+        from .views_supervisor_group_chat import SupervisorGroupChatMessagesAPIView
+        try:
+            return super().get(request, *args, **kwargs)
+        except Exception:
+            return SupervisorGroupChatMessagesAPIView().get(request)
 
     def post(self, request, *args, **kwargs):
-        serializer = ChatRoomSerializer(data=request.data)
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
+        from .views_supervisor_group_chat import SupervisorGroupChatMessagesAPIView
+        try:
+            serializer = ChatRoomSerializer(data=request.data)
+            if not serializer.is_valid():
+                return SupervisorGroupChatMessagesAPIView().post(request)
+            return super().post(request, *args, **kwargs)
+        except Exception:
+            return SupervisorGroupChatMessagesAPIView().post(request)
 
         sent_by = None
         student = None
